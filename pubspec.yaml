@@ -1,0 +1,53 @@
+name: fynda_app
+description: "Fynda — AI-powered deal discovery. Snap a photo, find the best deals."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # Networking
+  dio: ^5.7.0
+  
+  # State management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+  
+  # Routing
+  go_router: ^14.8.1
+  
+  # Auth & secure storage
+  flutter_secure_storage: ^9.2.4
+  google_sign_in: ^6.2.2
+  sign_in_with_apple: ^6.1.4
+  
+  # Image handling
+  image_picker: ^1.1.2
+  cached_network_image: ^3.4.1
+  
+  # UI
+  google_fonts: ^6.2.1
+  shimmer: ^3.0.0
+  flutter_svg: ^2.0.17
+  
+  # Utils
+  intl: ^0.19.0
+  url_launcher: ^6.3.1
+  share_plus: ^10.1.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/images/

@@ -1,0 +1,151 @@
+import 'dart:io';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import '../config/api_config.dart';
+import '../models/user.dart';
+import 'api_client.dart';
+
+class AuthService {
+  final ApiClient _api;
+
+  AuthService(this._api);
+
+  // ─── Email Auth ────────────────────────────────
+
+  Future<AuthResponse> login({
+    required String email,
+    required String password,
+    String? deviceId,
+    String? pushToken,
+  }) async {
+    final response = await _api.post('/auth/login/', data: {
+      'email': email,
+      'password': password,
+      'device_id': deviceId ?? _generateDeviceId(),
+      'platform': Platform.isIOS ? 'ios' : 'android',
+      'app_version': ApiConfig.appVersion,
+      if (pushToken != null) 'push_token': pushToken,
+    });
+
+    final authResponse = AuthResponse.fromJson(response.data);
+    await _api.saveTokens(
+      accessToken: authResponse.accessToken,
+      refreshToken: authResponse.refreshToken,
+    );
+    return authResponse;
+  }
+
+  Future<AuthResponse> register({
+    required String email,
+    required String password,
+    String? firstName,
+    String? lastName,
+    String? deviceId,
+  }) async {
+    final response = await _api.post('/auth/register/', data: {
+      'email': email,
+      'password': password,
+      if (firstName != null) 'first_name': firstName,
+      if (lastName != null) 'last_name': lastName,
+      'device_id': deviceId ?? _generateDeviceId(),
+      'platform': Platform.isIOS ? 'ios' : 'android',
+      'app_version': ApiConfig.appVersion,
+    });
+
+    final authResponse = AuthResponse.fromJson(response.data);
+    await _api.saveTokens(
+      accessToken: authResponse.accessToken,
+      refreshToken: authResponse.refreshToken,
+    );
+    return authResponse;
+  }
+
+  // ─── OAuth ─────────────────────────────────────
+
+  Future<AuthResponse> signInWithGoogle() async {
+    final googleSignIn = GoogleSignIn(
+      scopes: ['email', 'profile'],
+      serverClientId: ApiConfig.googleClientId,
+    );
+
+    final account = await googleSignIn.signIn();
+    if (account == null) throw Exception('Google sign-in cancelled');
+
+    final auth = await account.authentication;
+    final code = auth.serverAuthCode ?? auth.idToken ?? '';
+
+    final response = await _api.post('/auth/oauth/', data: {
+      'provider': 'google',
+      'code': code,
+      'redirect_uri': 'com.fynda.app:/oauth/callback',
+      'device_id': _generateDeviceId(),
+      'platform': Platform.isIOS ? 'ios' : 'android',
+    });
+
+    final authResponse = AuthResponse.fromJson(response.data);
+    await _api.saveTokens(
+      accessToken: authResponse.accessToken,
+      refreshToken: authResponse.refreshToken,
+    );
+    return authResponse;
+  }
+
+  Future<AuthResponse> signInWithApple() async {
+    final credential = await SignInWithApple.getAppleIDCredential(
+      scopes: [
+        AppleIDAuthorizationScopes.email,
+        AppleIDAuthorizationScopes.fullName,
+      ],
+    );
+
+    final response = await _api.post('/auth/oauth/', data: {
+      'provider': 'apple',
+      'code': credential.authorizationCode,
+      'id_token': credential.identityToken,
+      'user': {
+        'name': {
+          'firstName': credential.givenName ?? '',
+          'lastName': credential.familyName ?? '',
+        }
+      },
+      'device_id': _generateDeviceId(),
+      'platform': 'ios',
+    });
+
+    final authResponse = AuthResponse.fromJson(response.data);
+    await _api.saveTokens(
+      accessToken: authResponse.accessToken,
+      refreshToken: authResponse.refreshToken,
+    );
+    return authResponse;
+  }
+
+  // ─── Logout ────────────────────────────────────
+
+  Future<void> logout() async {
+    try {
+      await _api.post('/auth/logout/', data: {
+        'device_id': _generateDeviceId(),
+      });
+    } catch (_) {
+      // Logout even if server call fails
+    }
+    await _api.clearTokens();
+  }
+
+  // ─── Health Check ──────────────────────────────
+
+  Future<Map<String, dynamic>> healthCheck() async {
+    final response = await _api.get('/health/', params: {
+      'platform': Platform.isIOS ? 'ios' : 'android',
+    });
+    return response.data;
+  }
+
+  Future<bool> isLoggedIn() => _api.hasTokens();
+
+  String _generateDeviceId() {
+    // In production, use device_info_plus for a real device ID
+    return 'flutter_${DateTime.now().millisecondsSinceEpoch}';
+  }
+}
