@@ -1,63 +1,67 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/price_alert.dart';
-import '../providers/providers.dart';
+import '../services/api_client.dart';
+import '../services/storyboard_service.dart';
 import '../theme/app_theme.dart';
 
-final storyboardListProvider =
-    FutureProvider.autoDispose<List<Storyboard>>((ref) async {
-  return ref.read(storyboardServiceProvider).getStoryboards();
-});
-
-class StoryboardScreen extends ConsumerWidget {
+class StoryboardScreen extends StatefulWidget {
   const StoryboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final storyboards = ref.watch(storyboardListProvider);
+  State<StoryboardScreen> createState() => _StoryboardScreenState();
+}
 
+class _StoryboardScreenState extends State<StoryboardScreen> {
+  final StoryboardService _storyboardService = StoryboardService(ApiClient());
+  List<Storyboard>? _storyboards;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final list = await _storyboardService.getStoryboards();
+      if (mounted) setState(() => _storyboards = list);
+    } catch (_) {}
+    if (mounted) setState(() => _loading = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Fashion Storyboards'),
-      ),
-      body: storyboards.when(
-        data: (list) {
-          if (list.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.dashboard_customize_rounded,
-                      size: 56, color: AppTheme.textMuted),
-                  const SizedBox(height: 16),
-                  Text('No storyboards yet',
-                      style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Create storyboards on the web and\nview them here',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodySmall,
+      appBar: AppBar(title: const Text('Fashion Storyboards')),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : (_storyboards == null || _storyboards!.isEmpty)
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.dashboard_customize_rounded,
+                          size: 56, color: AppTheme.textMuted),
+                      const SizedBox(height: 16),
+                      Text('No storyboards yet',
+                          style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Create storyboards on the web and\nview them here',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            );
-          }
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(20),
-            itemCount: list.length,
-            itemBuilder: (_, i) => _StoryboardCard(storyboard: list[i]),
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => Center(
-          child: TextButton(
-            onPressed: () => ref.invalidate(storyboardListProvider),
-            child: const Text('Retry'),
-          ),
-        ),
-      ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(20),
+                  itemCount: _storyboards!.length,
+                  itemBuilder: (_, i) =>
+                      _StoryboardCard(storyboard: _storyboards![i]),
+                ),
     );
   }
 }
@@ -111,10 +115,7 @@ class _StoryboardCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     'Created ${_formatDate(storyboard.createdAt!)}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppTheme.textMuted,
-                    ),
+                    style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
                   ),
                 ],
               ],

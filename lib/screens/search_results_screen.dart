@@ -1,46 +1,44 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/deal.dart';
-import '../providers/providers.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../bloc/deals/deals_bloc.dart';
+import '../bloc/deals/deals_event.dart';
 import '../theme/app_theme.dart';
 import '../widgets/deal_card.dart';
 import '../widgets/loading_shimmer.dart';
 import '../widgets/quota_warning_banner.dart';
 
-class SearchResultsScreen extends ConsumerStatefulWidget {
+class SearchResultsScreen extends StatefulWidget {
   final String query;
 
   const SearchResultsScreen({super.key, required this.query});
 
   @override
-  ConsumerState<SearchResultsScreen> createState() =>
-      _SearchResultsScreenState();
+  State<SearchResultsScreen> createState() => _SearchResultsScreenState();
 }
 
-class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
-  SearchResult? _result;
-  bool _loading = true;
+class _SearchResultsScreenState extends State<SearchResultsScreen> {
   String _sort = 'relevance';
-  final _searchController = TextEditingController();
+  late TextEditingController _searchController;
 
   @override
   void initState() {
     super.initState();
-    _searchController.text = widget.query;
+    _searchController = TextEditingController(text: widget.query);
     _search(widget.query);
   }
 
-  Future<void> _search(String query) async {
+  void _search(String query) {
     if (query.isEmpty) return;
-    setState(() => _loading = true);
-    try {
-      final result = await ref.read(dealServiceProvider).search(
-            query: query,
-            sort: _sort,
-          );
-      if (mounted) setState(() => _result = result);
-    } catch (_) {}
-    if (mounted) setState(() => _loading = false);
+    context.read<DealsBloc>().add(DealsSearchRequested(
+      query: query,
+      sort: _sort,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -83,8 +81,10 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
           ),
         ],
       ),
-      body: _loading
-          ? GridView.builder(
+      body: BlocBuilder<DealsBloc, DealsState>(
+        builder: (context, state) {
+          if (state is DealsLoading) {
+            return GridView.builder(
               padding: const EdgeInsets.all(20),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
@@ -94,65 +94,80 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
               ),
               itemCount: 6,
               itemBuilder: (_, __) => const LoadingShimmer(),
-            )
-          : _result == null || _result!.deals.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.search_off,
-                          size: 56, color: AppTheme.textMuted),
-                      const SizedBox(height: 16),
-                      Text('No results for "${widget.query}"',
-                          style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: 4),
-                      Text('Try different keywords',
-                          style: Theme.of(context).textTheme.bodySmall),
-                    ],
-                  ),
-                )
-              : Column(
+            );
+          }
+
+          if (state is DealsError) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.search_off, size: 56, color: AppTheme.textMuted),
+                  const SizedBox(height: 16),
+                  Text('No results for "${widget.query}"',
+                      style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 4),
+                  Text('Try different keywords',
+                      style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
+            );
+          }
+
+          if (state is DealsLoaded) {
+            final result = state.result;
+            if (result.deals.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (_result!.quotaWarning != null) ...[
-                      const SizedBox(height: 8),
-                      QuotaWarningBanner(message: _result!.quotaWarning!),
-                    ],
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-                      child: Row(
-                        children: [
-                          Text(
-                            '${_result!.total} results',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                          const Spacer(),
-                          Text(
-                            '${_result!.searchTimeMs}ms',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppTheme.textMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: GridView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          childAspectRatio: 0.65,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                        ),
-                        itemCount: _result!.deals.length,
-                        itemBuilder: (_, i) =>
-                            DealCard(deal: _result!.deals[i]),
-                      ),
-                    ),
+                    const Icon(Icons.search_off, size: 56, color: AppTheme.textMuted),
+                    const SizedBox(height: 16),
+                    Text('No results for "${widget.query}"',
+                        style: Theme.of(context).textTheme.titleMedium),
                   ],
                 ),
+              );
+            }
+
+            return Column(
+              children: [
+                if (result.quotaWarning != null) ...[
+                  const SizedBox(height: 8),
+                  QuotaWarningBanner(message: result.quotaWarning!),
+                ],
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                  child: Row(
+                    children: [
+                      Text('${result.total} results',
+                          style: Theme.of(context).textTheme.bodySmall),
+                      const Spacer(),
+                      Text('${result.searchTimeMs}ms',
+                          style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: GridView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 0.65,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                    ),
+                    itemCount: result.deals.length,
+                    itemBuilder: (_, i) => DealCard(deal: result.deals[i]),
+                  ),
+                ),
+              ],
+            );
+          }
+
+          return const SizedBox.shrink();
+        },
+      ),
     );
   }
 }

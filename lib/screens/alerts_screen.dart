@@ -1,75 +1,90 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../bloc/alerts/alerts_bloc.dart';
+import '../bloc/alerts/alerts_event.dart';
 import '../models/price_alert.dart';
-import '../providers/providers.dart';
 import '../theme/app_theme.dart';
 
-final alertsListProvider =
-    FutureProvider.autoDispose<List<PriceAlert>>((ref) async {
-  return ref.read(alertServiceProvider).getAlerts();
-});
-
-class AlertsScreen extends ConsumerWidget {
+class AlertsScreen extends StatefulWidget {
   const AlertsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final alerts = ref.watch(alertsListProvider);
+  State<AlertsScreen> createState() => _AlertsScreenState();
+}
 
+class _AlertsScreenState extends State<AlertsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    context.read<AlertsBloc>().add(AlertsFetchRequested());
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Price Alerts'),
         automaticallyImplyLeading: false,
       ),
-      body: alerts.when(
-        data: (list) {
-          if (list.isEmpty) {
+      body: BlocBuilder<AlertsBloc, AlertsState>(
+        builder: (context, state) {
+          if (state is AlertsLoading || state is AlertsInitial) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (state is AlertsError) {
             return Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.notifications_none_rounded,
-                      size: 56, color: AppTheme.textMuted),
+                  const Icon(Icons.cloud_off, size: 48, color: AppTheme.textMuted),
                   const SizedBox(height: 16),
-                  Text('No price alerts',
-                      style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Set alerts on products and we\'ll notify\nyou when the price drops',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodySmall,
+                  TextButton(
+                    onPressed: () =>
+                        context.read<AlertsBloc>().add(AlertsFetchRequested()),
+                    child: const Text('Retry'),
                   ),
                 ],
               ),
             );
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(20),
-            itemCount: list.length,
-            itemBuilder: (_, i) => _AlertCard(
-              alert: list[i],
-              onDelete: () async {
-                await ref.read(alertServiceProvider).deleteAlert(list[i].id);
-                ref.invalidate(alertsListProvider);
-              },
-            ),
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.cloud_off, size: 48, color: AppTheme.textMuted),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: () => ref.invalidate(alertsListProvider),
-                child: const Text('Retry'),
+          if (state is AlertsLoaded) {
+            if (state.alerts.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.notifications_none_rounded,
+                        size: 56, color: AppTheme.textMuted),
+                    const SizedBox(height: 16),
+                    Text('No price alerts',
+                        style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Set alerts on products and we\'ll notify\nyou when the price drops',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return ListView.builder(
+              padding: const EdgeInsets.all(20),
+              itemCount: state.alerts.length,
+              itemBuilder: (_, i) => _AlertCard(
+                alert: state.alerts[i],
+                onDelete: () => context
+                    .read<AlertsBloc>()
+                    .add(AlertsDeleteRequested(state.alerts[i].id)),
               ),
-            ],
-          ),
-        ),
+            );
+          }
+
+          return const SizedBox.shrink();
+        },
       ),
     );
   }
@@ -96,7 +111,6 @@ class _AlertCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Product image
           if (alert.productImage != null)
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
@@ -126,8 +140,6 @@ class _AlertCard extends StatelessWidget {
                   color: AppTheme.textMuted),
             ),
           const SizedBox(width: 12),
-
-          // Details
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -147,27 +159,20 @@ class _AlertCard extends StatelessWidget {
                   children: [
                     Text(
                       'Target: ${alert.formattedTarget}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.accent,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: TextStyle(fontSize: 12, color: AppTheme.accent,
+                          fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(width: 12),
                     Text(
                       'Now: ${alert.formattedCurrent}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.textSecondary,
-                      ),
+                      style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                     ),
                   ],
                 ),
                 if (alert.isTriggered) ...[
                   const SizedBox(height: 4),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: AppTheme.success.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(4),
@@ -175,18 +180,15 @@ class _AlertCard extends StatelessWidget {
                     child: Text(
                       '🎉 Price dropped!',
                       style: TextStyle(
-                        fontSize: 10,
-                        color: AppTheme.success,
-                        fontWeight: FontWeight.w600,
-                      ),
+                          fontSize: 10,
+                          color: AppTheme.success,
+                          fontWeight: FontWeight.w600),
                     ),
                   ),
                 ],
               ],
             ),
           ),
-
-          // Delete
           IconButton(
             onPressed: onDelete,
             icon: const Icon(Icons.delete_outline,

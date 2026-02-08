@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'bloc/auth/auth_bloc.dart';
+import 'bloc/deals/deals_bloc.dart';
+import 'bloc/favorites/favorites_bloc.dart';
+import 'bloc/alerts/alerts_bloc.dart';
+import 'services/api_client.dart';
+import 'services/auth_service.dart';
+import 'services/deal_service.dart';
+import 'services/favorites_service.dart';
+import 'services/alert_service.dart';
 import 'router/app_router.dart';
 import 'theme/app_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Dark status bar
+
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
@@ -15,21 +23,48 @@ void main() {
     systemNavigationBarIconBrightness: Brightness.light,
   ));
 
-  runApp(const ProviderScope(child: FyndaApp()));
+  // Create shared API client
+  final apiClient = ApiClient();
+
+  runApp(FyndaApp(apiClient: apiClient));
 }
 
-class FyndaApp extends ConsumerWidget {
-  const FyndaApp({super.key});
+class FyndaApp extends StatelessWidget {
+  final ApiClient apiClient;
+
+  const FyndaApp({super.key, required this.apiClient});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final router = ref.watch(routerProvider);
-
-    return MaterialApp.router(
-      title: 'Fynda',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
-      routerConfig: router,
+  Widget build(BuildContext context) {
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<AuthBloc>(
+          create: (_) => AuthBloc(
+            authService: AuthService(apiClient),
+          ),
+        ),
+        BlocProvider<DealsBloc>(
+          create: (_) => DealsBloc(
+            dealService: DealService(apiClient),
+          ),
+        ),
+        BlocProvider<FavoritesBloc>(
+          create: (_) => FavoritesBloc(
+            favoritesService: FavoritesService(apiClient),
+          ),
+        ),
+        BlocProvider<AlertsBloc>(
+          create: (_) => AlertsBloc(
+            alertService: AlertService(apiClient),
+          ),
+        ),
+      ],
+      child: MaterialApp.router(
+        title: 'Fynda',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.darkTheme,
+        routerConfig: appRouter,
+      ),
     );
   }
 }
