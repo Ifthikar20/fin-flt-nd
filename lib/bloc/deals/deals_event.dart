@@ -14,11 +14,22 @@ class DealsFetchTrending extends DealsEvent {}
 class DealsSearchRequested extends DealsEvent {
   final String query;
   final String sort;
+  final String? gender;
+  final List<String>? sources;
 
-  const DealsSearchRequested({required this.query, this.sort = 'relevance'});
+  const DealsSearchRequested({
+    required this.query,
+    this.sort = 'relevance',
+    this.gender,
+    this.sources,
+  });
 
   @override
-  List<Object?> get props => [query, sort];
+  List<Object?> get props => [query, sort, gender, sources];
+}
+
+class DealsLoadMoreRequested extends DealsEvent {
+  const DealsLoadMoreRequested();
 }
 
 class DealsImageSearchRequested extends DealsEvent {
@@ -44,11 +55,19 @@ class DealsLoading extends DealsState {}
 
 class DealsLoaded extends DealsState {
   final SearchResult result;
+  final bool isLoadingMore;
 
-  const DealsLoaded(this.result);
+  const DealsLoaded(this.result, {this.isLoadingMore = false});
+
+  DealsLoaded copyWith({SearchResult? result, bool? isLoadingMore}) {
+    return DealsLoaded(
+      result ?? this.result,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+    );
+  }
 
   @override
-  List<Object?> get props => [result.total, result.query];
+  List<Object?> get props => [result.total, result.query, isLoadingMore];
 }
 
 class DealsError extends DealsState {

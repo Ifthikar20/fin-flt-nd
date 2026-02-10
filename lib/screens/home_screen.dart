@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -16,18 +17,39 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _searchController = TextEditingController();
-  int _selectedCategory = 0;
-  final _categories = ['All', 'Fashion', 'Electronics', 'Home', 'Beauty', 'Sports'];
+  int _promptIndex = 0;
+  late Timer _promptTimer;
+
+  static const _samplePrompts = [
+    'Find me a black leather jacket under \$200',
+    'Summer dresses similar to Zara',
+    'Affordable alternatives to Lululemon leggings',
+    'Best deals on Nike Air Max today',
+    'White sneakers under \$100',
+  ];
+
+  // Mock brand data for carousel
+  static const _brands = [
+    _BrandSale(name: 'ALO', discount: '60% OFF', color: Color(0xFF2C2C2C)),
+    _BrandSale(name: 'QUINCE', discount: '50% OFF', color: Color(0xFF5C4A3A)),
+    _BrandSale(name: 'MANGO', discount: '40% OFF', color: Color(0xFF3A3A3A)),
+    _BrandSale(name: 'ZARA', discount: '35% OFF', color: Color(0xFF1A1A1A)),
+    _BrandSale(name: 'H&M', discount: '45% OFF', color: Color(0xFF4A3A3A)),
+  ];
 
   @override
   void initState() {
     super.initState();
     context.read<DealsBloc>().add(DealsFetchTrending());
+    _promptTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (mounted) setState(() => _promptIndex = (_promptIndex + 1) % _samplePrompts.length);
+    });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _promptTimer.cancel();
     super.dispose();
   }
 
@@ -37,126 +59,137 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
-            // Header
+            // ─── Prompt Search Box ───────────────
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+                child: GestureDetector(
+                  onTap: () {
+                    FocusScope.of(context).requestFocus(FocusNode());
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: AppTheme.bgMain,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                      ),
+                      builder: (_) => _SearchSheet(
+                        onSearch: (q) {
+                          Navigator.pop(context);
+                          context.push('/search?q=$q');
+                        },
+                      ),
+                    );
+                  },
+                  child: Container(
+                    height: 48,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: AppTheme.bgInput,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                      border: Border.all(color: AppTheme.border, width: 0.5),
+                    ),
+                    child: Row(
                       children: [
-                        Text(
-                          'Discover',
-                          style: Theme.of(context).textTheme.headlineMedium,
-                        ),
-                        const Spacer(),
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: AppTheme.bgCard,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppTheme.border, width: 0.5),
+                        const Icon(Icons.search, color: AppTheme.textMuted, size: 18),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 400),
+                            child: Text(
+                              _samplePrompts[_promptIndex],
+                              key: ValueKey(_promptIndex),
+                              style: const TextStyle(
+                                color: AppTheme.textMuted,
+                                fontSize: 13,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                          child: const Icon(Icons.notifications_none_rounded,
-                              color: AppTheme.textSecondary, size: 20),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Search bar
-                    GestureDetector(
-                      onTap: () {},
-                      child: Container(
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: AppTheme.bgInput,
-                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                          border: Border.all(color: AppTheme.border, width: 0.5),
-                        ),
-                        child: TextField(
-                          controller: _searchController,
-                          onSubmitted: (q) {
-                            if (q.isNotEmpty) context.push('/search?q=$q');
-                          },
-                          decoration: InputDecoration(
-                            hintText: 'Search brands, products...',
-                            prefixIcon: Icon(Icons.search, color: AppTheme.textMuted, size: 20),
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                ),
-              ),
-            ),
-
-            // Category chips
-            SliverToBoxAdapter(
-              child: SizedBox(
-                height: 36,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: _categories.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                  itemBuilder: (_, i) => GestureDetector(
-                    onTap: () => setState(() => _selectedCategory = i),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: _selectedCategory == i
-                            ? AppTheme.primary
-                            : AppTheme.bgCard,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: _selectedCategory == i
-                              ? AppTheme.primary
-                              : AppTheme.border,
-                          width: 0.5,
-                        ),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        _categories[i],
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: _selectedCategory == i
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                          color: _selectedCategory == i
-                              ? Colors.white
-                              : AppTheme.textSecondary,
-                        ),
-                      ),
                     ),
                   ),
                 ),
               ),
             ),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
-
-            // Section title
+            // ─── Limited-Time Sales ──────────────
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.fromLTRB(20, 28, 20, 14),
+                child: Text(
+                  'LIMITED-TIME SALES',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textSecondary,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ),
+            ),
+
+            // Brand carousel
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: 200,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: _brands.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 14),
+                  itemBuilder: (_, i) => GestureDetector(
+                    onTap: () => context.push(
+                      '/brand/${Uri.encodeComponent(_brands[i].name)}',
+                    ),
+                    child: _BrandCard(brand: _brands[i]),
+                  ),
+                ),
+              ),
+            ),
+
+            // ─── Trending / Brand sections ───────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 32, 20, 14),
                 child: Row(
                   children: [
-                    Text(
-                      'Trending Now',
-                      style: Theme.of(context).textTheme.titleLarge,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'PICKED FOR YOU',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textSecondary,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Trending Deals',
+                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                      ],
                     ),
                     const Spacer(),
-                    TextButton(
-                      onPressed: () => context.push('/search?q=trending'),
-                      child: const Text('See All'),
+                    GestureDetector(
+                      onTap: () => context.push('/search?q=trending'),
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppTheme.border),
+                        ),
+                        child: const Icon(Icons.chevron_right, size: 18, color: AppTheme.textSecondary),
+                      ),
                     ),
                   ],
                 ),
@@ -172,9 +205,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     sliver: SliverGrid(
                       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
-                        childAspectRatio: 0.65,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
+                        childAspectRatio: 0.62,
+                        crossAxisSpacing: 14,
+                        mainAxisSpacing: 14,
                       ),
                       delegate: SliverChildBuilderDelegate(
                         (_, __) => const LoadingShimmer(),
@@ -194,10 +227,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             const Icon(Icons.cloud_off,
                                 size: 48, color: AppTheme.textMuted),
                             const SizedBox(height: 16),
-                            Text(
-                              'Could not load deals',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
+                            Text('Could not load deals',
+                                style: Theme.of(context).textTheme.titleMedium),
                             const SizedBox(height: 12),
                             TextButton(
                               onPressed: () =>
@@ -218,12 +249,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     sliver: SliverGrid(
                       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
-                        childAspectRatio: 0.65,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
+                        childAspectRatio: 0.62,
+                        crossAxisSpacing: 14,
+                        mainAxisSpacing: 14,
                       ),
                       delegate: SliverChildBuilderDelegate(
-                        (_, i) => DealCard(deal: deals[i]),
+                        (_, i) => DealCard(
+                          deal: deals[i],
+                          showTrendingTag: true,
+                        ),
                         childCount: deals.length,
                       ),
                     ),
@@ -235,6 +269,213 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
 
             const SliverToBoxAdapter(child: SizedBox(height: 100)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Brand Sale Carousel Card ────────────────────
+class _BrandSale {
+  final String name;
+  final String discount;
+  final Color color;
+
+  const _BrandSale({
+    required this.name,
+    required this.discount,
+    required this.color,
+  });
+}
+
+class _BrandCard extends StatelessWidget {
+  final _BrandSale brand;
+
+  const _BrandCard({required this.brand});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 140,
+      decoration: BoxDecoration(
+        color: brand.color,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          // Gradient overlay for arch shape
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    brand.color.withValues(alpha: 0.3),
+                    brand.color,
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Brand name
+          Positioned(
+            left: 14,
+            bottom: 40,
+            child: Text(
+              brand.name,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+
+          // Discount
+          Positioned(
+            left: 14,
+            bottom: 16,
+            child: Text(
+              brand.discount,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.85),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 2,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Search Bottom Sheet ────────────────────────
+class _SearchSheet extends StatefulWidget {
+  final ValueChanged<String> onSearch;
+
+  const _SearchSheet({required this.onSearch});
+
+  @override
+  State<_SearchSheet> createState() => _SearchSheetState();
+}
+
+class _SearchSheetState extends State<_SearchSheet> {
+  final _controller = TextEditingController();
+  final _focusNode = FocusNode();
+
+  static const _suggestions = [
+    'Black leather jacket under \$200',
+    'Summer dresses like Zara',
+    'Lululemon alternatives',
+    'Nike Air Max deals',
+    'White sneakers under \$100',
+    'Oversized blazer for women',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusNode.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.7,
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppTheme.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Search field
+            TextField(
+              controller: _controller,
+              focusNode: _focusNode,
+              onSubmitted: (q) {
+                if (q.isNotEmpty) widget.onSearch(q);
+              },
+              decoration: InputDecoration(
+                hintText: 'Search for an item...',
+                prefixIcon: const Icon(Icons.search, size: 20),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.send_rounded, size: 20),
+                  onPressed: () {
+                    if (_controller.text.isNotEmpty) {
+                      widget.onSearch(_controller.text);
+                    }
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Suggestion chips
+            Text(
+              'TRY SEARCHING',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textSecondary,
+                letterSpacing: 1.5,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _suggestions.map((s) => GestureDetector(
+                onTap: () => widget.onSearch(s),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                    border: Border.all(color: AppTheme.border),
+                  ),
+                  child: Text(
+                    s,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                ),
+              )).toList(),
+            ),
           ],
         ),
       ),

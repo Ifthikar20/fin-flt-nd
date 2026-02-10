@@ -46,207 +46,193 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
-        if (state is AuthAuthenticated) {
-          context.go('/');
-        }
+        if (state is AuthAuthenticated) context.go('/');
       },
       child: Scaffold(
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0xFF0D0D0F), Color(0xFF16161A)],
-            ),
-          ),
-          child: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 60),
+        backgroundColor: AppTheme.bgMain,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 60),
 
-                  // Logo
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppTheme.primary, AppTheme.primaryLight],
+                // Logo
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(Icons.bolt_rounded, size: 28, color: Colors.white),
+                ),
+                const SizedBox(height: 32),
+
+                Text(
+                  'Welcome\nback',
+                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                        fontSize: 36,
+                        height: 1.1,
                       ),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Icon(Icons.bolt_rounded, size: 28, color: Colors.white),
-                  ),
-                  const SizedBox(height: 32),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Sign in to discover amazing deals',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 40),
 
-                  Text(
-                    'Welcome\nback',
-                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                          fontSize: 36,
-                          height: 1.1,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Sign in to discover amazing deals',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 40),
-
-                  // Error message
-                  BlocBuilder<AuthBloc, AuthState>(
-                    buildWhen: (prev, curr) => curr is AuthFailure,
-                    builder: (context, state) {
-                      if (state is AuthFailure) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppTheme.error.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                              border: Border.all(color: AppTheme.error.withValues(alpha: 0.3)),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.error_outline, color: AppTheme.error, size: 20),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    state.message,
-                                    style: const TextStyle(color: AppTheme.error, fontSize: 13),
-                                  ),
-                                ),
-                              ],
-                            ),
+                // Error
+                BlocBuilder<AuthBloc, AuthState>(
+                  buildWhen: (prev, curr) => curr is AuthFailure,
+                  builder: (context, state) {
+                    if (state is AuthFailure) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppTheme.error.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                            border: Border.all(color: AppTheme.error.withValues(alpha: 0.2)),
                           ),
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    },
-                  ),
-
-                  // Email
-                  TextField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      hintText: 'Email address',
-                      prefixIcon: Icon(Icons.email_outlined, size: 20),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Password
-                  TextField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
-                    decoration: InputDecoration(
-                      hintText: 'Password',
-                      prefixIcon: const Icon(Icons.lock_outline, size: 20),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                          size: 20,
-                        ),
-                        onPressed: () =>
-                            setState(() => _obscurePassword = !_obscurePassword),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Sign in button
-                  BlocBuilder<AuthBloc, AuthState>(
-                    builder: (context, state) {
-                      final isLoading = state is AuthLoading;
-                      return SizedBox(
-                        width: double.infinity,
-                        height: 54,
-                        child: ElevatedButton(
-                          onPressed: isLoading ? null : _handleLogin,
-                          child: isLoading
-                              ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Text('Sign In'),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.error_outline, color: AppTheme.error, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(state.message,
+                                    style: const TextStyle(color: AppTheme.error, fontSize: 13)),
+                              ),
+                            ],
+                          ),
                         ),
                       );
-                    },
-                  ),
-                  const SizedBox(height: 28),
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
 
-                  // Divider
-                  Row(
-                    children: [
-                      Expanded(child: Divider(color: AppTheme.border)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'or continue with',
-                          style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
-                        ),
+                // Email
+                TextField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    hintText: 'Email address',
+                    prefixIcon: Icon(Icons.email_outlined, size: 20),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Password
+                TextField(
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
+                    hintText: 'Password',
+                    prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                        size: 20,
                       ),
-                      Expanded(child: Divider(color: AppTheme.border)),
-                    ],
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
+                    ),
                   ),
-                  const SizedBox(height: 24),
+                ),
+                const SizedBox(height: 24),
 
-                  // OAuth buttons
-                  Row(
-                    children: [
+                // Sign in button
+                BlocBuilder<AuthBloc, AuthState>(
+                  builder: (context, state) {
+                    final isLoading = state is AuthLoading;
+                    return SizedBox(
+                      width: double.infinity,
+                      height: 54,
+                      child: ElevatedButton(
+                        onPressed: isLoading ? null : _handleLogin,
+                        child: isLoading
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text('Sign In'),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 28),
+
+                // Divider
+                Row(
+                  children: [
+                    Expanded(child: Divider(color: AppTheme.border)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'or continue with',
+                        style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                      ),
+                    ),
+                    Expanded(child: Divider(color: AppTheme.border)),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // OAuth buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: _OAuthButton(
+                        icon: Icons.g_mobiledata_rounded,
+                        label: 'Google',
+                        onTap: _handleGoogleSignIn,
+                      ),
+                    ),
+                    if (Platform.isIOS) ...[
+                      const SizedBox(width: 12),
                       Expanded(
                         child: _OAuthButton(
-                          icon: Icons.g_mobiledata_rounded,
-                          label: 'Google',
-                          onTap: _handleGoogleSignIn,
+                          icon: Icons.apple_rounded,
+                          label: 'Apple',
+                          onTap: _handleAppleSignIn,
                         ),
                       ),
-                      if (Platform.isIOS) ...[
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _OAuthButton(
-                            icon: Icons.apple_rounded,
-                            label: 'Apple',
-                            onTap: _handleAppleSignIn,
-                          ),
-                        ),
-                      ],
                     ],
-                  ),
-                  const SizedBox(height: 32),
+                  ],
+                ),
+                const SizedBox(height: 32),
 
-                  // Register link
-                  Center(
-                    child: GestureDetector(
-                      onTap: () => context.go('/register'),
-                      child: RichText(
-                        text: TextSpan(
-                          text: "Don't have an account? ",
-                          style: TextStyle(color: AppTheme.textMuted, fontSize: 14),
-                          children: [
-                            TextSpan(
-                              text: 'Sign Up',
-                              style: TextStyle(
-                                color: AppTheme.primary,
-                                fontWeight: FontWeight.w600,
-                              ),
+                // Register link
+                Center(
+                  child: GestureDetector(
+                    onTap: () => context.go('/register'),
+                    child: RichText(
+                      text: TextSpan(
+                        text: "Don't have an account? ",
+                        style: TextStyle(color: AppTheme.textMuted, fontSize: 14),
+                        children: [
+                          TextSpan(
+                            text: 'Sign Up',
+                            style: TextStyle(
+                              color: AppTheme.primary,
+                              fontWeight: FontWeight.w600,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 32),
-                ],
-              ),
+                ),
+                const SizedBox(height: 32),
+              ],
             ),
           ),
         ),
@@ -273,7 +259,7 @@ class _OAuthButton extends StatelessWidget {
       child: Container(
         height: 54,
         decoration: BoxDecoration(
-          color: AppTheme.bgCardLight,
+          color: AppTheme.bgCard,
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
           border: Border.all(color: AppTheme.border),
         ),

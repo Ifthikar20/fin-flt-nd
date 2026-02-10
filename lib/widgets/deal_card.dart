@@ -1,14 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import '../bloc/favorites/favorites_bloc.dart';
+import '../bloc/favorites/favorites_event.dart';
 import '../models/deal.dart';
 import '../theme/app_theme.dart';
 
 class DealCard extends StatelessWidget {
   final Deal deal;
   final VoidCallback? onSave;
+  final bool showTrendingTag;
 
-  const DealCard({super.key, required this.deal, this.onSave});
+  const DealCard({
+    super.key,
+    required this.deal,
+    this.onSave,
+    this.showTrendingTag = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -16,9 +25,15 @@ class DealCard extends StatelessWidget {
       onTap: () => _openDeal(context),
       child: Container(
         decoration: BoxDecoration(
-          color: AppTheme.bgCard,
+          color: AppTheme.bgMain,
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          border: Border.all(color: AppTheme.border, width: 0.5),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(
@@ -34,15 +49,17 @@ class DealCard extends StatelessWidget {
                     CachedNetworkImage(
                       imageUrl: deal.image!,
                       fit: BoxFit.cover,
+                      memCacheWidth: 400,
+                      fadeInDuration: const Duration(milliseconds: 200),
                       placeholder: (_, __) => Container(
-                        color: AppTheme.bgCardLight,
+                        color: AppTheme.bgCard,
                         child: const Center(
                           child: Icon(Icons.image_outlined,
                               color: AppTheme.textMuted, size: 32),
                         ),
                       ),
                       errorWidget: (_, __, ___) => Container(
-                        color: AppTheme.bgCardLight,
+                        color: AppTheme.bgCard,
                         child: const Center(
                           child: Icon(Icons.broken_image_outlined,
                               color: AppTheme.textMuted, size: 32),
@@ -51,55 +68,58 @@ class DealCard extends StatelessWidget {
                     )
                   else
                     Container(
-                      color: AppTheme.bgCardLight,
+                      color: AppTheme.bgCard,
                       child: const Center(
                         child: Icon(Icons.shopping_bag_outlined,
                             color: AppTheme.textMuted, size: 32),
                       ),
                     ),
 
-                  // Discount badge
+                  // Discount badge (top-left, black pill)
                   if (deal.hasDiscount)
                     Positioned(
                       top: 8,
                       left: 8,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
+                            horizontal: 7, vertical: 3),
                         decoration: BoxDecoration(
-                          color: AppTheme.error,
-                          borderRadius: BorderRadius.circular(6),
+                          color: Colors.black.withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          '-${deal.discount}%',
+                          '${deal.discountPercent}% OFF',
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 11,
+                            fontSize: 10,
                             fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
                           ),
                         ),
                       ),
                     ),
 
-                  // Save button
+                  // Bookmark button (top-right) — saves deal via FavoritesBloc
                   Positioned(
                     top: 8,
                     right: 8,
                     child: GestureDetector(
-                      onTap: onSave,
+                      onTap: () => _handleSave(context),
                       child: Container(
-                        width: 32,
-                        height: 32,
+                        width: 30,
+                        height: 30,
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.5),
+                          color: Colors.white.withValues(alpha: 0.85),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
-                          deal.isSaved ? Icons.favorite : Icons.favorite_border,
+                          deal.isSaved
+                              ? Icons.bookmark
+                              : Icons.bookmark_border,
                           size: 16,
                           color: deal.isSaved
-                              ? AppTheme.error
-                              : Colors.white,
+                              ? AppTheme.primary
+                              : AppTheme.textSecondary,
                         ),
                       ),
                     ),
@@ -112,29 +132,27 @@ class DealCard extends StatelessWidget {
             Expanded(
               flex: 2,
               child: Padding(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Source badge
+                    // Brand name (tappable → brand page)
                     if (deal.source.isNotEmpty)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primary.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(4),
+                      GestureDetector(
+                        onTap: () => context.push(
+                          '/brand/${Uri.encodeComponent(deal.source)}',
                         ),
                         child: Text(
-                          deal.source,
-                          style: TextStyle(
-                            fontSize: 9,
+                          deal.source.toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 10,
                             fontWeight: FontWeight.w600,
-                            color: AppTheme.primaryLight,
+                            color: AppTheme.textMuted,
+                            letterSpacing: 0.8,
                           ),
                         ),
                       ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 3),
 
                     // Title
                     Expanded(
@@ -151,6 +169,21 @@ class DealCard extends StatelessWidget {
                       ),
                     ),
 
+                    // Trending tag (e.g. #GoodDeal, #TopBrandDeal)
+                    if (showTrendingTag)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          deal.trendingTag,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textSecondary,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ),
+
                     // Price row
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
@@ -158,7 +191,7 @@ class DealCard extends StatelessWidget {
                         Text(
                           deal.formattedPrice,
                           style: const TextStyle(
-                            fontSize: 16,
+                            fontSize: 15,
                             fontWeight: FontWeight.w700,
                             color: AppTheme.textPrimary,
                           ),
@@ -167,7 +200,7 @@ class DealCard extends StatelessWidget {
                           const SizedBox(width: 6),
                           Text(
                             deal.formattedOriginalPrice,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 11,
                               color: AppTheme.textMuted,
                               decoration: TextDecoration.lineThrough,
@@ -186,12 +219,20 @@ class DealCard extends StatelessWidget {
     );
   }
 
-  Future<void> _openDeal(BuildContext context) async {
-    if (deal.url != null) {
-      final uri = Uri.parse(deal.url!);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
+  void _handleSave(BuildContext context) {
+    if (onSave != null) {
+      onSave!();
+      return;
     }
+    // Default: use FavoritesBloc to save/unsave
+    if (deal.isSaved) {
+      context.read<FavoritesBloc>().add(FavoritesRemoveRequested(deal.id));
+    } else {
+      context.read<FavoritesBloc>().add(FavoritesSaveRequested(deal));
+    }
+  }
+
+  Future<void> _openDeal(BuildContext context) async {
+    context.push('/deal', extra: deal);
   }
 }

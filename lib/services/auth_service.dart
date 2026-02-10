@@ -1,9 +1,9 @@
-import 'dart:io';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../config/api_config.dart';
 import '../models/user.dart';
 import 'api_client.dart';
+import 'device_info_service.dart';
 
 class AuthService {
   final ApiClient _api;
@@ -18,11 +18,13 @@ class AuthService {
     String? deviceId,
     String? pushToken,
   }) async {
+    final realDeviceId = deviceId ?? await DeviceInfoService.getDeviceId();
+
     final response = await _api.post('/auth/login/', data: {
       'email': email,
       'password': password,
-      'device_id': deviceId ?? _generateDeviceId(),
-      'platform': Platform.isIOS ? 'ios' : 'android',
+      'device_id': realDeviceId,
+      'platform': DeviceInfoService.getPlatform(),
       'app_version': ApiConfig.appVersion,
       if (pushToken != null) 'push_token': pushToken,
     });
@@ -42,13 +44,15 @@ class AuthService {
     String? lastName,
     String? deviceId,
   }) async {
+    final realDeviceId = deviceId ?? await DeviceInfoService.getDeviceId();
+
     final response = await _api.post('/auth/register/', data: {
       'email': email,
       'password': password,
       if (firstName != null) 'first_name': firstName,
       if (lastName != null) 'last_name': lastName,
-      'device_id': deviceId ?? _generateDeviceId(),
-      'platform': Platform.isIOS ? 'ios' : 'android',
+      'device_id': realDeviceId,
+      'platform': DeviceInfoService.getPlatform(),
       'app_version': ApiConfig.appVersion,
     });
 
@@ -74,12 +78,14 @@ class AuthService {
     final auth = await account.authentication;
     final code = auth.serverAuthCode ?? auth.idToken ?? '';
 
+    final deviceId = await DeviceInfoService.getDeviceId();
+
     final response = await _api.post('/auth/oauth/', data: {
       'provider': 'google',
       'code': code,
       'redirect_uri': 'com.fynda.app:/oauth/callback',
-      'device_id': _generateDeviceId(),
-      'platform': Platform.isIOS ? 'ios' : 'android',
+      'device_id': deviceId,
+      'platform': DeviceInfoService.getPlatform(),
     });
 
     final authResponse = AuthResponse.fromJson(response.data);
@@ -98,6 +104,8 @@ class AuthService {
       ],
     );
 
+    final deviceId = await DeviceInfoService.getDeviceId();
+
     final response = await _api.post('/auth/oauth/', data: {
       'provider': 'apple',
       'code': credential.authorizationCode,
@@ -108,7 +116,7 @@ class AuthService {
           'lastName': credential.familyName ?? '',
         }
       },
-      'device_id': _generateDeviceId(),
+      'device_id': deviceId,
       'platform': 'ios',
     });
 
@@ -124,8 +132,9 @@ class AuthService {
 
   Future<void> logout() async {
     try {
+      final deviceId = await DeviceInfoService.getDeviceId();
       await _api.post('/auth/logout/', data: {
-        'device_id': _generateDeviceId(),
+        'device_id': deviceId,
       });
     } catch (_) {
       // Logout even if server call fails
@@ -137,15 +146,10 @@ class AuthService {
 
   Future<Map<String, dynamic>> healthCheck() async {
     final response = await _api.get('/health/', params: {
-      'platform': Platform.isIOS ? 'ios' : 'android',
+      'platform': DeviceInfoService.getPlatform(),
     });
     return response.data;
   }
 
   Future<bool> isLoggedIn() => _api.hasTokens();
-
-  String _generateDeviceId() {
-    // In production, use device_info_plus for a real device ID
-    return 'flutter_${DateTime.now().millisecondsSinceEpoch}';
-  }
 }

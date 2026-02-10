@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
-import '../models/price_alert.dart';
+import '../models/storyboard.dart';
 import '../services/api_client.dart';
 import '../services/storyboard_service.dart';
 import '../theme/app_theme.dart';

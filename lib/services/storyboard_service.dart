@@ -1,4 +1,4 @@
-import '../models/price_alert.dart';
+import '../models/storyboard.dart';
 import 'api_client.dart';
 
 class StoryboardService {

@@ -39,7 +39,6 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _initializeApp() async {
     await Future.delayed(const Duration(milliseconds: 2000));
     if (!mounted) return;
-
     context.read<AuthBloc>().add(AuthCheckRequested());
   }
 
@@ -60,74 +59,56 @@ class _SplashScreenState extends State<SplashScreen>
         }
       },
       child: Scaffold(
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF0D0D0F),
-                Color(0xFF1A1A2E),
-                Color(0xFF0D0D0F),
-              ],
-            ),
-          ),
-          child: Center(
-            child: AnimatedBuilder(
-              animation: _controller,
-              builder: (context, child) {
-                return Opacity(
-                  opacity: _fadeIn.value,
-                  child: Transform.scale(
-                    scale: _scale.value,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [AppTheme.primary, AppTheme.primaryLight],
+        backgroundColor: AppTheme.bgMain,
+        body: Center(
+          child: AnimatedBuilder(
+            animation: _controller,
+            builder: (context, child) {
+              return Opacity(
+                opacity: _fadeIn.value,
+                child: Transform.scale(
+                  scale: _scale.value,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.primary.withValues(alpha: 0.15),
+                              blurRadius: 30,
+                              spreadRadius: 5,
                             ),
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppTheme.primary.withValues(alpha: 0.4),
-                                blurRadius: 30,
-                                spreadRadius: 5,
-                              ),
-                            ],
-                          ),
-                          child: const Icon(Icons.bolt_rounded,
-                              size: 44, color: Colors.white),
+                          ],
                         ),
-                        const SizedBox(height: 24),
-                        Text(
-                          'Fynda',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineLarge
-                              ?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -1,
-                              ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Snap. Search. Save.',
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: AppTheme.textMuted,
-                                    letterSpacing: 2,
-                                  ),
-                        ),
-                      ],
-                    ),
+                        child: const Icon(Icons.bolt_rounded,
+                            size: 44, color: Colors.white),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        'Fynda',
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineLarge
+                            ?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -1),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Snap. Search. Save.',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AppTheme.textMuted,
+                              letterSpacing: 2,
+                            ),
+                      ),
+                    ],
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
           ),
         ),
       ),

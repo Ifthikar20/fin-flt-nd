@@ -14,7 +14,7 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int _index = 0;
 
-  static const _routes = ['/', '/favorites', '/alerts', '/profile'];
+  static const _routes = ['/', '/favorites', '/profile'];
 
   void _onTap(int i) {
     if (i == _index) return;
@@ -27,8 +27,8 @@ class _AppShellState extends State<AppShell> {
     return Scaffold(
       body: widget.child,
       bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: AppTheme.bgCard,
+        decoration: const BoxDecoration(
+          color: AppTheme.bgMain,
           border: Border(
             top: BorderSide(color: AppTheme.border, width: 0.5),
           ),
@@ -42,14 +42,14 @@ class _AppShellState extends State<AppShell> {
                 _NavItem(
                   icon: Icons.explore_outlined,
                   activeIcon: Icons.explore,
-                  label: 'Discover',
+                  label: 'HOME',
                   active: _index == 0,
                   onTap: () => _onTap(0),
                 ),
                 _NavItem(
-                  icon: Icons.favorite_border,
-                  activeIcon: Icons.favorite,
-                  label: 'Saved',
+                  icon: Icons.bookmark_border,
+                  activeIcon: Icons.bookmark,
+                  label: 'SAVED',
                   active: _index == 1,
                   onTap: () => _onTap(1),
                 ),
@@ -58,39 +58,30 @@ class _AppShellState extends State<AppShell> {
                 GestureDetector(
                   onTap: () => context.push('/camera'),
                   child: Container(
-                    width: 52,
-                    height: 52,
+                    width: 50,
+                    height: 50,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppTheme.primary, AppTheme.primaryLight],
-                      ),
+                      color: AppTheme.primary,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.primary.withValues(alpha: 0.3),
+                          color: AppTheme.primary.withValues(alpha: 0.2),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
                       ],
                     ),
                     child: const Icon(Icons.camera_alt_rounded,
-                        color: Colors.white, size: 24),
+                        color: Colors.white, size: 22),
                   ),
                 ),
 
                 _NavItem(
-                  icon: Icons.notifications_none_rounded,
-                  activeIcon: Icons.notifications,
-                  label: 'Alerts',
-                  active: _index == 2,
-                  onTap: () => _onTap(2),
-                ),
-                _NavItem(
                   icon: Icons.person_outline,
                   activeIcon: Icons.person,
-                  label: 'Profile',
-                  active: _index == 3,
-                  onTap: () => _onTap(3),
+                  label: 'YOU',
+                  active: _index == 2,
+                  onTap: () => _onTap(2),
                 ),
               ],
             ),
@@ -135,9 +126,10 @@ class _NavItem extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 9,
                 fontWeight: active ? FontWeight.w600 : FontWeight.w400,
                 color: active ? AppTheme.primary : AppTheme.textMuted,
+                letterSpacing: 0.8,
               ),
             ),
           ],

@@ -8,10 +8,12 @@ import '../screens/search_results_screen.dart';
 import '../screens/camera_screen.dart';
 import '../screens/image_results_screen.dart';
 import '../screens/favorites_screen.dart';
-import '../screens/alerts_screen.dart';
 import '../screens/storyboard_screen.dart';
 import '../screens/profile_screen.dart';
+import '../screens/brand_screen.dart';
+import '../screens/product_detail_screen.dart';
 import '../screens/app_shell.dart';
+import '../models/deal.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/splash',
@@ -50,12 +52,6 @@ final GoRouter appRouter = GoRouter(
           ),
         ),
         GoRoute(
-          path: '/alerts',
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: AlertsScreen(),
-          ),
-        ),
-        GoRoute(
           path: '/profile',
           pageBuilder: (context, state) => const NoTransitionPage(
             child: ProfileScreen(),
@@ -88,6 +84,20 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/storyboard',
       builder: (context, state) => const StoryboardScreen(),
+    ),
+    GoRoute(
+      path: '/brand/:name',
+      builder: (context, state) {
+        final name = Uri.decodeComponent(state.pathParameters['name'] ?? '');
+        return BrandScreen(brandName: name);
+      },
+    ),
+    GoRoute(
+      path: '/deal',
+      builder: (context, state) {
+        final deal = state.extra as Deal;
+        return ProductDetailScreen(deal: deal);
+      },
     ),
   ],
 );

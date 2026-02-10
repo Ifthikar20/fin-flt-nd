@@ -16,13 +16,19 @@ class DealService {
     double? maxPrice,
     String sort = 'relevance',
     int limit = 20,
+    int offset = 0,
+    String? gender,
+    List<String>? sources,
   }) async {
     final response = await _api.post('/deals/search/', data: {
-      'query': query,
+      'query': query.trim(),
       if (minPrice != null) 'min_price': minPrice,
       if (maxPrice != null) 'max_price': maxPrice,
       'sort': sort,
       'limit': limit,
+      'offset': offset,
+      if (gender != null) 'gender': gender,
+      if (sources != null) 'sources': sources,
     });
     return SearchResult.fromJson(response.data);
   }

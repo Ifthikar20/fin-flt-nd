@@ -3,38 +3,34 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // ─── Brand Colors ──────────────────────────────
-  static const Color primary = Color(0xFF4F7CFF);
-  static const Color primaryLight = Color(0xFF7B9FFF);
-  static const Color primaryDark = Color(0xFF3A5FCC);
-  
-  static const Color accent = Color(0xFF00E5A0);
-  static const Color accentDark = Color(0xFF00B87D);
-  
+  static const Color primary = Color(0xFF1A1A1A);        // Black primary
+  static const Color primaryLight = Color(0xFF3A3A3A);
+  static const Color primaryDark = Color(0xFF000000);
+
+  static const Color accent = Color(0xFF1A1A1A);         // Monochrome accent
+  static const Color accentDark = Color(0xFF000000);
+
   // ─── Backgrounds ───────────────────────────────
-  static const Color bgDark = Color(0xFF0D0D0F);
-  static const Color bgCard = Color(0xFF1A1A1F);
-  static const Color bgCardLight = Color(0xFF242429);
-  static const Color bgSurface = Color(0xFF16161A);
-  static const Color bgInput = Color(0xFF1E1E24);
-  
+  static const Color bgMain = Color(0xFFFFFFFF);         // Pure white
+  static const Color bgCard = Color(0xFFF5F5F7);         // Light grey cards
+  static const Color bgCardLight = Color(0xFFEEEEF0);    // Slightly darker grey
+  static const Color bgSurface = Color(0xFFFAFAFC);      // Near-white surface
+  static const Color bgInput = Color(0xFFF0F0F2);        // Input fill
+
   // ─── Text ──────────────────────────────────────
-  static const Color textPrimary = Color(0xFFF5F5F7);
-  static const Color textSecondary = Color(0xFF9A9AA0);
-  static const Color textMuted = Color(0xFF5A5A62);
-  
+  static const Color textPrimary = Color(0xFF1A1A1A);    // Near-black
+  static const Color textSecondary = Color(0xFF6E6E73);  // Medium grey
+  static const Color textMuted = Color(0xFFAEAEB2);      // Light grey
+
   // ─── Semantic ──────────────────────────────────
-  static const Color success = Color(0xFF00E5A0);
-  static const Color warning = Color(0xFFFFB84D);
-  static const Color error = Color(0xFFFF5A5A);
-  static const Color info = Color(0xFF4F7CFF);
-  
+  static const Color success = Color(0xFF34C759);
+  static const Color warning = Color(0xFFFF9F0A);
+  static const Color error = Color(0xFFFF3B30);
+  static const Color info = Color(0xFF007AFF);
+
   // ─── Borders / Dividers ────────────────────────
-  static const Color border = Color(0xFF2A2A30);
-  static const Color divider = Color(0xFF1F1F25);
-  
-  // ─── Glass Effect ──────────────────────────────
-  static const Color glassWhite = Color(0x15FFFFFF);
-  static const Color glassBorder = Color(0x20FFFFFF);
+  static const Color border = Color(0xFFE5E5E7);
+  static const Color divider = Color(0xFFE5E5E7);
 
   // ─── Border Radius ─────────────────────────────
   static const double radiusSm = 8.0;
@@ -43,20 +39,25 @@ class AppTheme {
   static const double radiusXl = 24.0;
   static const double radiusFull = 100.0;
 
-  static ThemeData get darkTheme {
+  // ─── Legacy aliases (keeps existing code working) ──
+  static const Color bgDark = bgMain;
+
+  static ThemeData get darkTheme => lightTheme;   // alias for existing refs
+
+  static ThemeData get lightTheme {
     final baseTextTheme = GoogleFonts.outfitTextTheme();
-    
+
     return ThemeData(
-      brightness: Brightness.dark,
-      scaffoldBackgroundColor: bgDark,
+      brightness: Brightness.light,
+      scaffoldBackgroundColor: bgMain,
       primaryColor: primary,
-      colorScheme: const ColorScheme.dark(
+      colorScheme: const ColorScheme.light(
         primary: primary,
         secondary: accent,
         surface: bgSurface,
         error: error,
         onPrimary: Colors.white,
-        onSecondary: Colors.black,
+        onSecondary: Colors.white,
         onSurface: textPrimary,
         onError: Colors.white,
       ),
@@ -112,9 +113,16 @@ class AppTheme {
           color: textPrimary,
           letterSpacing: 0.3,
         ),
+        // Uppercase section headers (Alo-style)
+        labelSmall: GoogleFonts.outfit(
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+          color: textSecondary,
+          letterSpacing: 1.2,
+        ),
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: bgDark,
+        backgroundColor: bgMain,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: true,
@@ -126,18 +134,17 @@ class AppTheme {
         iconTheme: const IconThemeData(color: textPrimary),
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: bgCard,
+        backgroundColor: bgMain,
         selectedItemColor: primary,
         unselectedItemColor: textMuted,
         type: BottomNavigationBarType.fixed,
         elevation: 0,
       ),
       cardTheme: CardThemeData(
-        color: bgCard,
+        color: bgMain,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusMd),
-          side: const BorderSide(color: border, width: 0.5),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -174,19 +181,19 @@ class AppTheme {
         fillColor: bgInput,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
+          borderRadius: BorderRadius.circular(radiusFull),
           borderSide: const BorderSide(color: border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
+          borderRadius: BorderRadius.circular(radiusFull),
           borderSide: const BorderSide(color: border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
+          borderRadius: BorderRadius.circular(radiusFull),
           borderSide: const BorderSide(color: primary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
+          borderRadius: BorderRadius.circular(radiusFull),
           borderSide: const BorderSide(color: error),
         ),
         hintStyle: GoogleFonts.outfit(
@@ -200,19 +207,19 @@ class AppTheme {
       ),
       dividerTheme: const DividerThemeData(
         color: divider,
-        thickness: 1,
-        space: 1,
+        thickness: 0.5,
+        space: 0.5,
       ),
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: bgCardLight,
-        contentTextStyle: GoogleFonts.outfit(color: textPrimary),
+        backgroundColor: primary,
+        contentTextStyle: GoogleFonts.outfit(color: Colors.white),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusMd),
         ),
         behavior: SnackBarBehavior.floating,
       ),
       bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: bgCard,
+        backgroundColor: bgMain,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),

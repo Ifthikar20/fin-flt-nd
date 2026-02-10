@@ -4,12 +4,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'bloc/auth/auth_bloc.dart';
 import 'bloc/deals/deals_bloc.dart';
 import 'bloc/favorites/favorites_bloc.dart';
-import 'bloc/alerts/alerts_bloc.dart';
+
 import 'services/api_client.dart';
 import 'services/auth_service.dart';
 import 'services/deal_service.dart';
 import 'services/favorites_service.dart';
-import 'services/alert_service.dart';
+
 import 'router/app_router.dart';
 import 'theme/app_theme.dart';
 
@@ -51,11 +51,6 @@ class FyndaApp extends StatelessWidget {
         BlocProvider<FavoritesBloc>(
           create: (_) => FavoritesBloc(
             favoritesService: FavoritesService(apiClient),
-          ),
-        ),
-        BlocProvider<AlertsBloc>(
-          create: (_) => AlertsBloc(
-            alertService: AlertService(apiClient),
           ),
         ),
       ],
