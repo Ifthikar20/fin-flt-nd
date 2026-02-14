@@ -5,10 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
 import '../models/board_item.dart';
 import '../models/deal.dart';
 import '../services/api_client.dart';
 import '../services/deal_service.dart';
+import '../services/background_removal_service.dart';
 import '../models/storyboard.dart';
 import '../theme/app_theme.dart';
 
@@ -25,13 +27,16 @@ class _FashionBoardEditorState extends State<FashionBoardEditor> {
   final TextEditingController _titleCtrl =
       TextEditingController(text: 'My Board');
   final TextEditingController _searchCtrl = TextEditingController();
-  final DealService _dealService = DealService(ApiClient());
+  final ApiClient _apiClient = ApiClient();
+  late final DealService _dealService = DealService(_apiClient);
+  late final BackgroundRemovalService _bgService = BackgroundRemovalService(_apiClient);
 
   final List<BoardItem> _items = [];
   Color _bgColor = const Color(0xFFF5F0EB);
   String? _bgPattern; // null = solid, or pattern name
   int _selectedItemIndex = -1;
   int _bottomTab = 0;
+  bool _removingBg = false;
 
   // Search state
   List<Deal> _searchResults = [];
@@ -400,6 +405,37 @@ class _FashionBoardEditorState extends State<FashionBoardEditor> {
     }
   }
 
+  Future<void> _removeBackground() async {
+    if (_selectedItemIndex < 0 || _selectedItemIndex >= _items.length) return;
+    final item = _items[_selectedItemIndex];
+    if (item.type != BoardItemType.product) return;
+
+    // If already processed, skip
+    if (item.metadata?['bgRemoved'] == true) return;
+
+    setState(() => _removingBg = true);
+
+    try {
+      // Download the image
+      final response = await http.get(Uri.parse(item.content));
+      if (response.statusCode == 200) {
+        final resultBytes = await _bgService.removeBackgroundFromBytes(
+            Uint8List.fromList(response.bodyBytes));
+        if (resultBytes != null && mounted) {
+          setState(() {
+            item.metadata ??= {};
+            item.metadata!['bgRemoved'] = true;
+            item.metadata!['bgRemovedBytes'] = resultBytes;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('BG removal error: $e');
+    } finally {
+      if (mounted) setState(() => _removingBg = false);
+    }
+  }
+
   Future<Uint8List?> _captureCanvas() async {
     try {
       // Deselect before capture
@@ -490,7 +526,41 @@ class _FashionBoardEditorState extends State<FashionBoardEditor> {
             ),
           ),
           const SizedBox(width: 8),
-          if (_selectedItemIndex >= 0)
+          if (_selectedItemIndex >= 0) ...[                    
+            // Remove BG button (product items only)
+            if (_selectedItemIndex < _items.length &&
+                _items[_selectedItemIndex].type == BoardItemType.product &&
+                _items[_selectedItemIndex].metadata?['bgRemoved'] != true)
+              GestureDetector(
+                onTap: _removingBg ? null : _removeBackground,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: _removingBg
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: AppTheme.primary))
+                      : const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.auto_fix_high_rounded,
+                                size: 16, color: AppTheme.primary),
+                            SizedBox(width: 4),
+                            Text('Remove BG',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.primary)),
+                          ],
+                        ),
+                ),
+              ),
+            const SizedBox(width: 4),
             GestureDetector(
               onTap: _deleteSelected,
               child: Container(
@@ -503,6 +573,7 @@ class _FashionBoardEditorState extends State<FashionBoardEditor> {
                     size: 20, color: AppTheme.error),
               ),
             ),
+          ],
           const SizedBox(width: 8),
           GestureDetector(
             onTap: _done,
@@ -1162,26 +1233,35 @@ class _CanvasItemWidgetState extends State<_CanvasItemWidget> {
     Widget child;
     switch (item.type) {
       case BoardItemType.product:
-        child = ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: CachedNetworkImage(
-            imageUrl: item.content,
-            fit: BoxFit.cover,
-            memCacheWidth: 300,
-            placeholder: (_, __) => Container(
-              color: AppTheme.bgCardLight,
-              child: const Center(
-                  child: SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 1.5))),
+        // If bg was removed, render from memory bytes
+        final bgBytes = item.metadata?['bgRemovedBytes'] as Uint8List?;
+        if (bgBytes != null) {
+          child = ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.memory(bgBytes, fit: BoxFit.contain),
+          );
+        } else {
+          child = ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: CachedNetworkImage(
+              imageUrl: item.content,
+              fit: BoxFit.cover,
+              memCacheWidth: 300,
+              placeholder: (_, __) => Container(
+                color: AppTheme.bgCardLight,
+                child: const Center(
+                    child: SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 1.5))),
+              ),
+              errorWidget: (_, __, ___) => Container(
+                color: AppTheme.bgCardLight,
+                child: const Icon(Icons.image, color: AppTheme.textMuted),
+              ),
             ),
-            errorWidget: (_, __, ___) => Container(
-              color: AppTheme.bgCardLight,
-              child: const Icon(Icons.image, color: AppTheme.textMuted),
-            ),
-          ),
-        );
+          );
+        }
         break;
       case BoardItemType.sticker:
         child = FittedBox(

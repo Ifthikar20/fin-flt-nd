@@ -5,7 +5,7 @@ enum BoardItemType { product, sticker, text, assetSticker }
 class BoardItem {
   final String id;
   final BoardItemType type;
-  final String content; // image URL, emoji, or text
+  String content; // image URL, emoji, or text (mutable for bg removal)
   double x;
   double y;
   double width;
