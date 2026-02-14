@@ -14,7 +14,7 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int _index = 0;
 
-  static const _routes = ['/', '/favorites', '/profile'];
+  static const _routes = ['/', '/favorites', '/boards', '/profile'];
 
   void _onTap(int i) {
     if (i == _index) return;
@@ -58,8 +58,8 @@ class _AppShellState extends State<AppShell> {
                 GestureDetector(
                   onTap: () => context.push('/camera'),
                   child: Container(
-                    width: 50,
-                    height: 50,
+                    width: 46,
+                    height: 46,
                     decoration: BoxDecoration(
                       color: AppTheme.primary,
                       shape: BoxShape.circle,
@@ -72,16 +72,24 @@ class _AppShellState extends State<AppShell> {
                       ],
                     ),
                     child: const Icon(Icons.camera_alt_rounded,
-                        color: Colors.white, size: 22),
+                        color: Colors.white, size: 20),
                   ),
+                ),
+
+                _NavItem(
+                  icon: Icons.dashboard_outlined,
+                  activeIcon: Icons.dashboard_rounded,
+                  label: 'BOARDS',
+                  active: _index == 2,
+                  onTap: () => _onTap(2),
                 ),
 
                 _NavItem(
                   icon: Icons.person_outline,
                   activeIcon: Icons.person,
                   label: 'YOU',
-                  active: _index == 2,
-                  onTap: () => _onTap(2),
+                  active: _index == 3,
+                  onTap: () => _onTap(3),
                 ),
               ],
             ),

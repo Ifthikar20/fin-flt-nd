@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:go_router/go_router.dart';
 import '../screens/splash_screen.dart';
 import '../screens/onboarding_screen.dart';
@@ -8,12 +9,15 @@ import '../screens/search_results_screen.dart';
 import '../screens/camera_screen.dart';
 import '../screens/image_results_screen.dart';
 import '../screens/favorites_screen.dart';
-import '../screens/storyboard_screen.dart';
+import '../screens/fashion_board_screen.dart';
+import '../screens/fashion_board_editor.dart';
+import '../screens/fashion_board_share_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/brand_screen.dart';
 import '../screens/product_detail_screen.dart';
 import '../screens/app_shell.dart';
 import '../models/deal.dart';
+import '../models/storyboard.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/splash',
@@ -52,6 +56,12 @@ final GoRouter appRouter = GoRouter(
           ),
         ),
         GoRoute(
+          path: '/boards',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: FashionBoardScreen(),
+          ),
+        ),
+        GoRoute(
           path: '/profile',
           pageBuilder: (context, state) => const NoTransitionPage(
             child: ProfileScreen(),
@@ -82,9 +92,27 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
-      path: '/storyboard',
-      builder: (context, state) => const StoryboardScreen(),
+      path: '/boards/editor',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        return FashionBoardEditor(
+          existingBoard: extra?['storyboard'] as Storyboard?,
+        );
+      },
     ),
+    GoRoute(
+      path: '/boards/share',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        return FashionBoardShareScreen(
+          boardData: extra['boardData'] as Map<String, dynamic>? ?? {},
+          title: extra['title'] as String? ?? 'My Board',
+          imageBytes: extra['imageBytes'] as Uint8List?,
+          existingBoard: extra['existingBoard'] as Storyboard?,
+        );
+      },
+    ),
+
     GoRoute(
       path: '/brand/:name',
       builder: (context, state) {

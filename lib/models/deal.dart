@@ -40,9 +40,14 @@ class Deal {
   });
 
   factory Deal.fromJson(Map<String, dynamic> json) {
-    final rawImage = json['image'] ?? json['image_url'];
+    // Check multiple possible image field names; skip empty strings
+    final rawImage = _firstNonEmpty([
+      json['image'],
+      json['image_url'],
+      json['product_photo'],
+      json['thumbnail'],
+    ]);
     final imageUrl = (rawImage is String && rawImage.isNotEmpty) ? rawImage : null;
-    print('🖼️ Deal[${json['id']}] image=$rawImage → parsed=$imageUrl');
     
     return Deal(
       id: json['id']?.toString() ?? '',
@@ -167,6 +172,14 @@ class Deal {
     if (rating != null && rating! >= 4.0) return '#HighlyRated';
 
     return '#Trending';
+  }
+
+  /// Returns the first non-null, non-empty string from [candidates].
+  static String? _firstNonEmpty(List<dynamic> candidates) {
+    for (final c in candidates) {
+      if (c is String && c.isNotEmpty) return c;
+    }
+    return null;
   }
 
   static double? _parseDouble(dynamic value) {

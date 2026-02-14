@@ -31,4 +31,8 @@ class StoryboardService {
     final response = await _api.get('/storyboard/$token/');
     return Storyboard.fromJson(response.data);
   }
+
+  Future<void> deleteStoryboard(String token) async {
+    await _api.delete('/storyboard/$token/');
+  }
 }

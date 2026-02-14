@@ -33,6 +33,23 @@ class DealService {
     return SearchResult.fromJson(response.data);
   }
 
+  /// Cache-only instant search — returns in <50ms if cached.
+  Future<SearchResult?> instantSearch(String query) async {
+    try {
+      final response = await _api.get(
+        '/deals/search/instant/',
+        params: {'q': query.trim()},
+      );
+      final data = response.data;
+      if (data['cached'] == true && (data['deals'] as List).isNotEmpty) {
+        return SearchResult.fromJson(data);
+      }
+      return null; // cache miss
+    } catch (_) {
+      return null; // don't block on errors
+    }
+  }
+
   // ─── Trending ──────────────────────────────────
 
   Future<SearchResult> getTrending({

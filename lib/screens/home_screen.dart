@@ -17,6 +17,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
   int _promptIndex = 0;
   late Timer _promptTimer;
 
@@ -28,7 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
     'White sneakers under \$100',
   ];
 
-  // Mock brand data for carousel
+  // Brand data for carousel
   static const _brands = [
     _BrandSale(name: 'ALO', discount: '60% OFF', color: Color(0xFF2C2C2C)),
     _BrandSale(name: 'QUINCE', discount: '50% OFF', color: Color(0xFF5C4A3A)),
@@ -44,11 +45,20 @@ class _HomeScreenState extends State<HomeScreen> {
     _promptTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       if (mounted) setState(() => _promptIndex = (_promptIndex + 1) % _samplePrompts.length);
     });
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 300) {
+      context.read<DealsBloc>().add(const DealsLoadMoreRequested());
+    }
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     _promptTimer.cancel();
     super.dispose();
   }
@@ -58,6 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       body: SafeArea(
         child: CustomScrollView(
+          controller: _scrollController,
           slivers: [
             // ─── Prompt Search Box ───────────────
             SliverToBoxAdapter(
@@ -82,8 +93,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   },
                   child: Container(
-                    height: 48,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    height: 56,
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
                     decoration: BoxDecoration(
                       color: AppTheme.bgInput,
                       borderRadius: BorderRadius.circular(AppTheme.radiusFull),
@@ -91,8 +102,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.search, color: AppTheme.textMuted, size: 18),
-                        const SizedBox(width: 10),
+                        const Icon(Icons.search, color: AppTheme.textMuted, size: 20),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: AnimatedSwitcher(
                             duration: const Duration(milliseconds: 400),
@@ -101,7 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               key: ValueKey(_promptIndex),
                               style: const TextStyle(
                                 color: AppTheme.textMuted,
-                                fontSize: 13,
+                                fontSize: 15,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -264,6 +275,27 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 }
 
+                return const SliverToBoxAdapter(child: SizedBox.shrink());
+              },
+            ),
+
+            // Loading more indicator
+            BlocBuilder<DealsBloc, DealsState>(
+              builder: (context, state) {
+                if (state is DealsLoaded && state.isLoadingMore) {
+                  return const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    ),
+                  );
+                }
                 return const SliverToBoxAdapter(child: SizedBox.shrink());
               },
             ),
