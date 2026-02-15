@@ -1,10 +1,10 @@
 class ApiConfig {
-  static const String baseUrl = 'https://api.fynda.shop/api/mobile';
+  static const String baseUrl = 'https://api.fynda.shop/api/v1/mobile';
   static const String webBaseUrl = 'https://fynda.shop';
   static const String apiHost = 'api.fynda.shop';
   
   // Local development:
-  // static const String baseUrl = 'http://localhost:8000/api/mobile';
+  // static const String baseUrl = 'http://localhost:8000/api/v1/mobile';
   // static const String webBaseUrl = 'http://localhost:8000';
   // static const String apiHost = 'localhost';
   
