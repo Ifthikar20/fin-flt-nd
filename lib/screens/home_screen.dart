@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../bloc/deals/deals_bloc.dart';
 import '../bloc/deals/deals_event.dart';
+import '../models/featured_content.dart';
+import '../services/featured_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/deal_card.dart';
 import '../widgets/loading_shimmer.dart';
@@ -19,33 +21,57 @@ class _HomeScreenState extends State<HomeScreen> {
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
   int _promptIndex = 0;
-  late Timer _promptTimer;
+  Timer? _promptTimer;
 
-  static const _samplePrompts = [
-    'Find me a black leather jacket under \$200',
-    'Summer dresses similar to Zara',
-    'Affordable alternatives to Lululemon leggings',
-    'Best deals on Nike Air Max today',
-    'White sneakers under \$100',
-  ];
+  // API-driven data (replaces hardcoded demo data)
+  List<FeaturedBrand> _brands = [];
+  List<String> _searchPrompts = [];
+  List<String> _suggestions = [];
+  bool _featuredLoaded = false;
 
-  // Brand data for carousel
-  static const _brands = [
-    _BrandSale(name: 'ALO', discount: '60% OFF', color: Color(0xFF2C2C2C)),
-    _BrandSale(name: 'QUINCE', discount: '50% OFF', color: Color(0xFF5C4A3A)),
-    _BrandSale(name: 'MANGO', discount: '40% OFF', color: Color(0xFF3A3A3A)),
-    _BrandSale(name: 'ZARA', discount: '35% OFF', color: Color(0xFF1A1A1A)),
-    _BrandSale(name: 'H&M', discount: '45% OFF', color: Color(0xFF4A3A3A)),
+  // Fallback prompts shown while API loads
+  static const _fallbackPrompts = [
+    'Search for fashion deals...',
   ];
 
   @override
   void initState() {
     super.initState();
     context.read<DealsBloc>().add(DealsFetchTrending());
-    _promptTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      if (mounted) setState(() => _promptIndex = (_promptIndex + 1) % _samplePrompts.length);
-    });
     _scrollController.addListener(_onScroll);
+    _loadFeaturedContent();
+  }
+
+  Future<void> _loadFeaturedContent() async {
+    try {
+      final service = context.read<FeaturedService>();
+      final content = await service.getFeaturedContent();
+      if (mounted) {
+        setState(() {
+          _brands = content.brands;
+          _searchPrompts = content.searchPrompts;
+          _suggestions = content.quickSuggestions;
+          _featuredLoaded = true;
+        });
+        _startPromptAnimation();
+      }
+    } catch (e) {
+      // Silently fail — the home screen still works with trending deals
+      debugPrint('Failed to load featured content: $e');
+      if (mounted) {
+        setState(() => _featuredLoaded = true);
+      }
+    }
+  }
+
+  void _startPromptAnimation() {
+    if (_searchPrompts.isEmpty) return;
+    _promptTimer?.cancel();
+    _promptTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (mounted) {
+        setState(() => _promptIndex = (_promptIndex + 1) % _searchPrompts.length);
+      }
+    });
   }
 
   void _onScroll() {
@@ -59,9 +85,12 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _searchController.dispose();
     _scrollController.dispose();
-    _promptTimer.cancel();
+    _promptTimer?.cancel();
     super.dispose();
   }
+
+  List<String> get _activePrompts =>
+      _searchPrompts.isNotEmpty ? _searchPrompts : _fallbackPrompts;
 
   @override
   Widget build(BuildContext context) {
@@ -85,6 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                       ),
                       builder: (_) => _SearchSheet(
+                        suggestions: _suggestions,
                         onSearch: (q) {
                           Navigator.pop(context);
                           context.push('/search?q=$q');
@@ -108,7 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: AnimatedSwitcher(
                             duration: const Duration(milliseconds: 400),
                             child: Text(
-                              _samplePrompts[_promptIndex],
+                              _activePrompts[_promptIndex % _activePrompts.length],
                               key: ValueKey(_promptIndex),
                               style: const TextStyle(
                                 color: AppTheme.textMuted,
@@ -126,40 +156,42 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // ─── Limited-Time Sales ──────────────
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 28, 20, 14),
-                child: Text(
-                  'LIMITED-TIME SALES',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textSecondary,
-                    letterSpacing: 1.5,
-                  ),
-                ),
-              ),
-            ),
-
-            // Brand carousel
-            SliverToBoxAdapter(
-              child: SizedBox(
-                height: 200,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: _brands.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 14),
-                  itemBuilder: (_, i) => GestureDetector(
-                    onTap: () => context.push(
-                      '/brand/${Uri.encodeComponent(_brands[i].name)}',
+            // ─── Featured Brands ──────────────
+            if (_brands.isNotEmpty) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 28, 20, 14),
+                  child: Text(
+                    'EXPLORE BRANDS',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textSecondary,
+                      letterSpacing: 1.5,
                     ),
-                    child: _BrandCard(brand: _brands[i]),
                   ),
                 ),
               ),
-            ),
+
+              // Brand carousel
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: 200,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: _brands.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 14),
+                    itemBuilder: (_, i) => GestureDetector(
+                      onTap: () => context.push(
+                        '/brand/${Uri.encodeComponent(_brands[i].name)}',
+                      ),
+                      child: _BrandCard(brand: _brands[i]),
+                    ),
+                  ),
+                ),
+              ),
+            ],
 
             // ─── Trending / Brand sections ───────
             SliverToBoxAdapter(
@@ -308,36 +340,31 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// ─── Brand Sale Carousel Card ────────────────────
-class _BrandSale {
-  final String name;
-  final String discount;
-  final Color color;
-
-  const _BrandSale({
-    required this.name,
-    required this.discount,
-    required this.color,
-  });
-}
-
+// ─── Brand Card (API-driven) ────────────────────
 class _BrandCard extends StatelessWidget {
-  final _BrandSale brand;
+  final FeaturedBrand brand;
 
   const _BrandCard({required this.brand});
+
+  // Hash-based color generation for variety
+  Color get _brandColor {
+    final hash = brand.name.hashCode;
+    final hue = (hash % 360).abs().toDouble();
+    return HSLColor.fromAHSL(1.0, hue, 0.25, 0.18).toColor();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: 140,
       decoration: BoxDecoration(
-        color: brand.color,
+        color: _brandColor,
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
-          // Gradient overlay for arch shape
+          // Gradient overlay
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -345,10 +372,24 @@ class _BrandCard extends StatelessWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    brand.color.withValues(alpha: 0.3),
-                    brand.color,
+                    _brandColor.withValues(alpha: 0.3),
+                    _brandColor,
                   ],
                 ),
+              ),
+            ),
+          ),
+
+          // Brand initial (large, faded)
+          Positioned(
+            right: -10,
+            top: 10,
+            child: Text(
+              brand.initial,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.08),
+                fontSize: 100,
+                fontWeight: FontWeight.w900,
               ),
             ),
           ),
@@ -368,17 +409,17 @@ class _BrandCard extends StatelessWidget {
             ),
           ),
 
-          // Discount
+          // Category label
           Positioned(
             left: 14,
             bottom: 16,
             child: Text(
-              brand.discount,
+              brand.category,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.85),
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                letterSpacing: 2,
+                letterSpacing: 0.5,
               ),
             ),
           ),
@@ -391,8 +432,9 @@ class _BrandCard extends StatelessWidget {
 // ─── Search Bottom Sheet ────────────────────────
 class _SearchSheet extends StatefulWidget {
   final ValueChanged<String> onSearch;
+  final List<String> suggestions;
 
-  const _SearchSheet({required this.onSearch});
+  const _SearchSheet({required this.onSearch, required this.suggestions});
 
   @override
   State<_SearchSheet> createState() => _SearchSheetState();
@@ -402,14 +444,16 @@ class _SearchSheetState extends State<_SearchSheet> {
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
 
-  static const _suggestions = [
-    'Black leather jacket under \$200',
-    'Summer dresses like Zara',
-    'Lululemon alternatives',
-    'Nike Air Max deals',
-    'White sneakers under \$100',
-    'Oversized blazer for women',
+  // Fallback suggestions if API returned empty
+  static const _fallbackSuggestions = [
+    'Black leather jacket',
+    'Summer dresses',
+    'Nike sneakers',
+    'Designer handbag',
   ];
+
+  List<String> get _activeSuggestions =>
+      widget.suggestions.isNotEmpty ? widget.suggestions : _fallbackSuggestions;
 
   @override
   void initState() {
@@ -490,7 +534,7 @@ class _SearchSheetState extends State<_SearchSheet> {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: _suggestions.map((s) => GestureDetector(
+              children: _activeSuggestions.map((s) => GestureDetector(
                 onTap: () => widget.onSearch(s),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),

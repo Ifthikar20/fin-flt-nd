@@ -9,6 +9,7 @@ import 'services/api_client.dart';
 import 'services/auth_service.dart';
 import 'services/deal_service.dart';
 import 'services/favorites_service.dart';
+import 'services/featured_service.dart';
 
 import 'router/app_router.dart';
 import 'theme/app_theme.dart';
@@ -36,29 +37,32 @@ class FyndaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider<AuthBloc>(
-          create: (_) => AuthBloc(
-            authService: AuthService(apiClient),
+    return RepositoryProvider<FeaturedService>(
+      create: (_) => FeaturedService(apiClient),
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider<AuthBloc>(
+            create: (_) => AuthBloc(
+              authService: AuthService(apiClient),
+            ),
           ),
-        ),
-        BlocProvider<DealsBloc>(
-          create: (_) => DealsBloc(
-            dealService: DealService(apiClient),
+          BlocProvider<DealsBloc>(
+            create: (_) => DealsBloc(
+              dealService: DealService(apiClient),
+            ),
           ),
-        ),
-        BlocProvider<FavoritesBloc>(
-          create: (_) => FavoritesBloc(
-            favoritesService: FavoritesService(apiClient),
+          BlocProvider<FavoritesBloc>(
+            create: (_) => FavoritesBloc(
+              favoritesService: FavoritesService(apiClient),
+            ),
           ),
+        ],
+        child: MaterialApp.router(
+          title: 'Fynda',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.darkTheme,
+          routerConfig: appRouter,
         ),
-      ],
-      child: MaterialApp.router(
-        title: 'Fynda',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.darkTheme,
-        routerConfig: appRouter,
       ),
     );
   }
