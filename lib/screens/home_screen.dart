@@ -105,7 +105,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                 child: GestureDetector(
                   onTap: () {
-                    FocusScope.of(context).requestFocus(FocusNode());
+                    FocusManager.instance.primaryFocus?.unfocus();
                     showModalBottomSheet(
                       context: context,
                       isScrollControlled: true,
@@ -420,6 +420,38 @@ class _BrandCard extends StatelessWidget {
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
                 letterSpacing: 0.5,
+              ),
+            ),
+          ),
+
+          // Like count pill (top-right)
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.45),
+                borderRadius: BorderRadius.circular(100),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    brand.isLiked ? Icons.favorite : Icons.favorite_border,
+                    color: brand.isLiked ? Colors.redAccent : Colors.white70,
+                    size: 14,
+                  ),
+                  const SizedBox(width: 3),
+                  Text(
+                    '${brand.likesCount}',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

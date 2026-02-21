@@ -80,7 +80,14 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/camera',
-      builder: (context, state) => const CameraScreen(),
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const CameraScreen(),
+        transitionDuration: const Duration(milliseconds: 200),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
     ),
     GoRoute(
       path: '/image-results',

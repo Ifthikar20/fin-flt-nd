@@ -30,20 +30,29 @@ class FeaturedContent {
 
 class FeaturedBrand {
   final String name;
+  final String slug;
   final String initial;
   final String category;
+  final int likesCount;
+  final bool isLiked;
 
   FeaturedBrand({
     required this.name,
+    required this.slug,
     required this.initial,
     required this.category,
+    this.likesCount = 0,
+    this.isLiked = false,
   });
 
   factory FeaturedBrand.fromJson(Map<String, dynamic> json) {
     return FeaturedBrand(
       name: json['name'] ?? '',
+      slug: json['slug'] ?? '',
       initial: json['initial'] ?? '',
       category: json['category'] ?? '',
+      likesCount: json['likes_count'] ?? 0,
+      isLiked: json['is_liked'] ?? false,
     );
   }
 }

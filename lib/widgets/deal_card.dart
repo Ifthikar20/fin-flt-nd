@@ -21,7 +21,8 @@ class DealCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return RepaintBoundary(
+      child: GestureDetector(
       onTap: () => _openDeal(context),
       child: Container(
         decoration: BoxDecoration(
@@ -215,6 +216,7 @@ class DealCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

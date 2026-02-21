@@ -1,7 +1,7 @@
 class ApiConfig {
-  static const String baseUrl = 'https://api.fynda.shop/api/v1/mobile';
-  static const String webBaseUrl = 'https://fynda.shop';
-  static const String apiHost = 'api.fynda.shop';
+  static const String baseUrl = 'https://api.outfi.ai/api/v1/mobile';
+  static const String webBaseUrl = 'https://outfi.ai';
+  static const String apiHost = 'api.outfi.ai';
   
   // Local development:
   // static const String baseUrl = 'http://localhost:8000/api/v1/mobile';
@@ -27,7 +27,7 @@ class ApiConfig {
 
   // SHA-256 fingerprints of your TLS certificate chain (leaf + intermediate).
   // Generate with:
-  //   openssl s_client -connect api.fynda.shop:443 | openssl x509 -pubkey -noout \
+  //   openssl s_client -connect api.outfi.ai:443 | openssl x509 -pubkey -noout \
   //     | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | base64
   //
   // ⚠️  UPDATE these before every certificate renewal (or pin the intermediate CA).

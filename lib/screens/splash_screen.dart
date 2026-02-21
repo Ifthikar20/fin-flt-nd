@@ -37,9 +37,10 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _initializeApp() async {
-    await Future.delayed(const Duration(milliseconds: 2000));
-    if (!mounted) return;
+    // Fire auth check immediately — don't wait for the animation
     context.read<AuthBloc>().add(AuthCheckRequested());
+    // Minimum display time for branding (reduced from 2000ms)
+    await Future.delayed(const Duration(milliseconds: 800));
   }
 
   @override
