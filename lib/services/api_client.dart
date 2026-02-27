@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
@@ -23,11 +24,12 @@ class ApiClient {
       baseUrl: ApiConfig.baseUrl,
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 15),
-      responseType: ResponseType.plain, // Don't auto-parse JSON
+      // Use bytes to get raw response data — we decode UTF-8 + JSON manually
+      // to avoid Dio's internal decoder issues with gzip + charset
+      responseType: ResponseType.bytes,
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'Accept-Encoding': 'gzip, deflate',
         // ── Security headers for APIGuardMiddleware ──
         'X-Fynda-Mobile-Key': ApiConfig.mobileApiKey,
         'X-Fynda-Platform': DeviceInfoService.getPlatform(),
@@ -44,6 +46,18 @@ class ApiClient {
       onError: _onError,
     ));
 
+    // ── Debug logging ─────────────────────────────
+    if (kDebugMode) {
+      _dio.interceptors.add(LogInterceptor(
+        requestBody: true,
+        responseBody: false, // We log manually to avoid token leaks
+        requestHeader: false,
+        responseHeader: false,
+        error: true,
+        logPrint: (s) => debugPrint('🌐 $s'),
+      ));
+    }
+
     // ── Certificate Pinning ───────────────────────
     _configureCertificatePinning();
   }
@@ -53,12 +67,8 @@ class ApiClient {
   // ─── Certificate Pinning ──────────────────────
 
   /// Pins TLS connections to the SHA-256 fingerprints defined in [ApiConfig].
-  ///
-  /// When [ApiConfig.certificatePins] is empty (e.g. during development) or
-  /// in debug mode, pinning is skipped so local proxies / Charles still work.
   void _configureCertificatePinning() {
     if (ApiConfig.certificatePins.isEmpty || kDebugMode) {
-      // Skip pinning in debug or when no pins configured
       return;
     }
 
@@ -66,13 +76,9 @@ class ApiClient {
       final client = HttpClient();
       client.badCertificateCallback =
           (X509Certificate cert, String host, int port) {
-        // Only enforce pinning for our API host
         if (host != ApiConfig.apiHost) return true;
-
-        // Compute SHA-256 of the certificate's DER-encoded bytes
         final digest = sha256.convert(cert.der);
         final certHash = base64Encode(digest.bytes);
-
         final isPinned = ApiConfig.certificatePins.contains(certHash);
         if (!isPinned) {
           debugPrint(
@@ -86,6 +92,41 @@ class ApiClient {
     };
   }
 
+  // ─── Decode raw bytes → JSON Map ──────────────
+
+  /// Decodes response bytes into a JSON object.
+  /// Handles gzip decompression (done by Dio) and UTF-8 decoding manually.
+  static dynamic _decodeResponseBytes(dynamic data) {
+    if (data is Map) return data; // Already decoded JSON object
+    // Check for raw bytes BEFORE the generic List check
+    // (Uint8List is a subtype of List, so `data is List` would match bytes!)
+    if (data is Uint8List) {
+      // Strip UTF-8 BOM if present
+      final offset = (data.length >= 3 &&
+              data[0] == 0xEF &&
+              data[1] == 0xBB &&
+              data[2] == 0xBF)
+          ? 3
+          : 0;
+      final jsonStr = utf8.decode(data.sublist(offset), allowMalformed: true);
+      debugPrint('📦 Decoded ${data.length} bytes → ${jsonStr.length} chars');
+      if (jsonStr.trim().isEmpty) return <String, dynamic>{};
+      return jsonDecode(jsonStr);
+    }
+    if (data is List<int>) {
+      final bytes = Uint8List.fromList(data);
+      final jsonStr = utf8.decode(bytes, allowMalformed: true);
+      if (jsonStr.trim().isEmpty) return <String, dynamic>{};
+      return jsonDecode(jsonStr);
+    }
+    if (data is List) return data; // Already decoded JSON array
+    if (data is String) {
+      if (data.trim().isEmpty) return <String, dynamic>{};
+      return jsonDecode(data);
+    }
+    return data;
+  }
+
   // ─── Interceptors ─────────────────────────────
 
   Future<void> _onRequest(
@@ -94,20 +135,24 @@ class ApiClient {
     if (token != null) {
       options.headers['Authorization'] = 'Bearer $token';
     }
+    debugPrint('📤 ${options.method} ${options.path}');
     handler.next(options);
   }
 
-  /// Manually decode JSON from the plain-text response body.
+  /// Decode the raw bytes response into a JSON Map/List.
   void _onResponse(
       Response response, ResponseInterceptorHandler handler) {
-    if (response.data is String) {
-      final body = (response.data as String).trim();
-      if (body.isNotEmpty) {
-        try {
-          response.data = jsonDecode(body);
-        } catch (e) {
-          debugPrint('JSON decode error: $e');
-        }
+    try {
+      response.data = _decodeResponseBytes(response.data);
+      debugPrint('📥 ${response.statusCode} ${response.requestOptions.path} '
+          '(${response.data is Map ? (response.data as Map).length : '?'} keys)');
+    } catch (e) {
+      debugPrint('❌ Response decode error for ${response.requestOptions.path}: $e');
+      // Log raw byte info for debugging
+      if (response.data is List<int>) {
+        final bytes = response.data as List<int>;
+        debugPrint('   Raw bytes length: ${bytes.length}');
+        debugPrint('   First 50 bytes: ${bytes.take(50).toList()}');
       }
     }
     handler.next(response);
@@ -115,14 +160,14 @@ class ApiClient {
 
   Future<void> _onError(
       DioException error, ErrorInterceptorHandler handler) async {
-    // Try to parse the error response body too
-    if (error.response?.data is String) {
-      final body = (error.response!.data as String).trim();
-      if (body.isNotEmpty) {
-        try {
-          error.response!.data = jsonDecode(body);
-        } catch (_) {}
-      }
+    debugPrint('❌ Error ${error.response?.statusCode} ${error.requestOptions.path}: '
+        '${error.message}');
+
+    // Try to decode error response body
+    if (error.response?.data != null) {
+      try {
+        error.response!.data = _decodeResponseBytes(error.response!.data);
+      } catch (_) {}
     }
 
     // Only attempt refresh for 401 on non-auth endpoints (guard against loop)
@@ -157,21 +202,23 @@ class ApiClient {
       final refreshToken = await _storage.read(key: _refreshTokenKey);
       if (refreshToken == null) return false;
 
-      final response = await Dio(BaseOptions(
-        responseType: ResponseType.plain,
+      final refreshDio = Dio(BaseOptions(
+        responseType: ResponseType.bytes,
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
           'X-Fynda-Mobile-Key': ApiConfig.mobileApiKey,
           'X-Fynda-Platform': DeviceInfoService.getPlatform(),
         },
-      )).post(
+      ));
+
+      final response = await refreshDio.post(
         '${ApiConfig.baseUrl.replaceAll('/mobile', '')}/auth/token/refresh/',
         data: {'refresh': refreshToken},
       );
 
-      if (response.statusCode == 200 && response.data is String) {
-        final data = jsonDecode((response.data as String).trim());
+      if (response.statusCode == 200) {
+        final data = _decodeResponseBytes(response.data);
         if (data is Map) {
           await saveTokens(
             accessToken: data['access'] ?? '',
